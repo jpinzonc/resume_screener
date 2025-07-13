@@ -7,6 +7,37 @@ app = Flask(__name__)
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3.2"  # or "mistral" or any model you have
 
+def compare_keywords_ollama(keywords, resume_text):
+    if not keywords:
+        return []
+    prompt = (
+        "Given the following list of technical skills and the resume text, "
+        "return a JSON array of objects, each with 'keyword' and 'in_resume' (true/false), "
+        "indicating if the skill is present in the resume. "
+        "Only use the keywords provided, and do not add explanations.\n\n"
+        f"Keywords: {', '.join(keywords)}\n\n"
+        f"Resume:\n{resume_text}\n\n"
+        "Output:"
+    )
+    response = requests.post(
+        OLLAMA_URL,
+        json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False},
+        timeout=120
+    )
+    if response.ok:
+        import json
+        result = response.json().get("response", "")
+        try:
+            # Find the first JSON array in the response
+            start = result.find('[')
+            end = result.rfind(']')
+            if start != -1 and end != -1:
+                return json.loads(result[start:end+1])
+        except Exception:
+            pass
+    # fallback: all False
+    return [{"keyword": kw, "in_resume": kw in resume_text.lower()} for kw in keywords]
+
 def extract_salary_ollama(job_text):
     prompt = (
         "Based on the following job description, extract the estimated salary or salary range. "
@@ -56,6 +87,7 @@ def extract_keywords_ollama(job_text):
         "Extract a comma-separated list of technical skills and tools, programming languages, "
         "frameworks, and tools required for this position. Only list the keywords, no explanations.\n\n"
         "make sure you remove all explanations and only return the keywords.\n\n"
+        "extract the skills from parenthesis or examples in the job description.\n\n"
         "Do not include salary, benefits, or any other non-technical information.\n\n"
         f"Job Description:\n{job_text}\n\nKeywords:"
     )
@@ -116,17 +148,18 @@ def home():
             salary = extract_salary_ollama(job_text)
             soft_skills = extract_soft_skills_ollama(job_text)
         # Compare
-        resume_text_lower = resume_text.lower()
-        comparison = [
-            {"keyword": kw, "in_resume": kw in resume_text_lower}
-            for kw in keywords
-        ]
+        # Use Ollama for comparison
+        comparison = compare_keywords_ollama(keywords, resume_text)
+        soft_comparison = compare_keywords_ollama(soft_skills, resume_text)
     return render_template(
         "home.html",
         job_text=job_text,
         resume_text=resume_text,
         comparison=comparison,
-        keywords=keywords,salary=salary,soft_skills=soft_skills,
+        keywords=keywords,
+        salary=salary,
+        soft_skills=soft_skills,
+        soft_comparison=soft_comparison,
     )
 
 if __name__ == "__main__":
