@@ -1,4 +1,4 @@
-# Flask Template
+# KEYWORD RESUME SCANNER
 
 This sample repo contains the recommended structure for a Python Flask project for a resume scanner
 
