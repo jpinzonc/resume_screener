@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Ollama Resume Keyword Scanner</h2>
+<form method="POST" enctype="multipart/form-data">
+  <div>
+    <label for="job_text">Paste Job Description:</label><br>
+    <textarea name="job_text" id="job_text" rows="8" cols="70">{{ job_text }}</textarea>
+  </div>
+  <div>
+    <label for="resume_file">Upload Resume (PDF or TXT):</label>
+    <input type="file" name="resume_file" id="resume_file" accept=".pdf,.txt">
+  </div>
+  <div>
+    <label for="resume_text">Or Paste Resume Text:</label><br>
+    <textarea name="resume_text" id="resume_text" rows="8" cols="70">{{ resume_text }}</textarea>
+  </div>
+  <button type="submit">Extract & Compare</button>
+</form>
+
+{% if salary %}
+  <h3>Estimated Salary:</h3>
+  <p>{{ salary }}</p>
+{% endif %}
+
+<div style="display: flex; gap: 40px;">
+  <div>
+    <h3>Technical Skills</h3>
+    <table border="1" cellpadding="5" cellspacing="0">
+      <tr>
+        <th>Keyword/Skill</th>
+        <th>In Resume?</th>
+      </tr>
+      {% for row in comparison %}
+        <tr>
+          <td>{{ row.keyword }}</td>
+          <td style="text-align:center;">
+            {% if row.in_resume %}
+              ✅
+            {% else %}
+              ❌
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div>
+    <h3>Soft Skills</h3>
+    <table border="1" cellpadding="5" cellspacing="0">
+      <tr>
+        <th>Soft Skill</th>
+        <th>In Resume?</th>
+      </tr>
+      {% for row in soft_comparison %}
+        <tr>
+          <td>{{ row.keyword }}</td>
+          <td style="text-align:center;">
+            {% if row.in_resume %}
+              ✅
+            {% else %}
+              ❌
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

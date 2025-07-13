@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Resume Keyword Scanner</h2>
+<form method="POST" enctype="multipart/form-data">
+  <div>
+    <label for="resume_file">Upload Resume (PDF or TXT):</label>
+    <input type="file" name="resume_file" id="resume_file" accept=".pdf,.txt">
+  </div>
+  <div>
+    <label for="resume_text">Or Paste Resume Text:</label><br>
+    <textarea name="resume_text" id="resume_text" rows="8" cols="70">{{ resume_text }}</textarea>
+  </div>
+  <div>
+    <label for="job_text">Paste Job Description:</label><br>
+    <textarea name="job_text" id="job_text" rows="8" cols="70">{{ job_text }}</textarea>
+  </div>
+  <div>
+    <label for="relevant_keywords">Relevant Keywords/Skills for the Position (comma separated):</label><br>
+    <input type="text" name="relevant_keywords" id="relevant_keywords" size="70" value="{{ relevant_keywords|default('') }}">
+    <small>e.g. Python, project management, SQL, data analysis</small>
+  </div>
+  <button type="submit">Compare</button>
+</form>
+
+{% if resume_text %}
+  <h3>First 10 Lines of Resume:</h3>
+  <pre>
+{% for line in resume_text.splitlines()[:10] %}
+{{ line }}
+{% endfor %}
+  </pre>
+{% endif %}
+
+{% if relevant_keywords %}
+  <h3>Extracted Relevant Keywords/Skills from Description:</h3>
+  <table border="1" cellpadding="5" cellspacing="0">
+    <tr>
+      <th>Keyword/Skill</th>
+      <th>In Extraction</th>
+      <th>In Resume?</th>
+    </tr>
+    {% set resume_text_lower = resume_text.lower() %}
+    {% for kw in relevant_keywords.split(',') %}
+      {% set keyword = kw.strip() %}
+      <tr>
+        <td>{{ keyword }}</td>
+        <td style="text-align:center;">
+          {% if keyword %}
+            ✅
+          {% else %}
+            ❌
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if keyword and keyword|lower in resume_text_lower %}
+            ✅
+          {% else %}
+            ❌
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endif %}
+
+{% if missing_keywords %}
+  <h3>Missing Relevant Keywords/Skills:</h3>
+  <ul>
+    {% for kw in missing_keywords %}
+      <li>{{ kw }}</li>
+    {% endfor %}
+  </ul>
+{% elif missing_keywords is not none and not missing_keywords %}
+  <p><strong>All relevant keywords from the job description are present in the resume!</strong></p>
+{% endif %}
+{% endblock %}
