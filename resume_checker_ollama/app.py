@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2"  # or "mistral" or any model you have
+OLLAMA_MODEL = "llama3.2:latest"  # or "mistral" or any model you have
 
 def compare_keywords_ollama(keywords, resume_text):
     if not keywords:
@@ -61,6 +61,8 @@ def extract_soft_skills_ollama(job_text):
         "Extract a comma-separated list of soft skills required for this position, "
         "such as communication, teamwork, leadership, problem solving, adaptability, etc. "
         "Only list the keywords, no explanations. Do not include technical skills, salary, or benefits.\n\n"
+        "do not include comments like: 'here is the list of technical skills and tools' remove this from the skill list.\n\n"
+        "remove all text decorators\n\n"
         f"Job Description:\n{job_text}\n\nSoft Skills:"
     )
     response = requests.post(
@@ -72,8 +74,10 @@ def extract_soft_skills_ollama(job_text):
         result = response.json()
         keywords = result.get("response", "")
         blacklist = [
-            "here is a comma-separated list of soft skills",
-            "this",
+            "here is a comma-separated list of technical skills",
+            "here is a list of technical skills and tools"
+            "this",  # in case "this" also appears
+            "here is the list of technical skills and tools required for this position",
         ]
         return [
             kw.strip().lower()
@@ -86,6 +90,7 @@ def extract_keywords_ollama(job_text):
     prompt = (
         "Extract a comma-separated list of technical skills and tools, programming languages, "
         "frameworks, and tools required for this position. Only list the keywords, no explanations.\n\n"
+        "remove all text decorators\n\n"
         "make sure you remove all explanations and only return the keywords.\n\n"
         "extract the skills from parenthesis or examples in the job description.\n\n"
         "Do not include salary, benefits, or any other non-technical information.\n\n"
@@ -104,6 +109,7 @@ def extract_keywords_ollama(job_text):
             "here is a comma-separated list of technical skills",
             "here is a list of technical skills and tools"
             "this",  # in case "this" also appears
+            "here is the list of technical skills and tools required for this position",
         ]
         return [
             kw.strip().lower()
@@ -114,6 +120,7 @@ def extract_keywords_ollama(job_text):
 
 def extract_text_from_file(file_storage):
     filename = file_storage.filename.lower()
+    print('FILENAME', filename)
     if filename.endswith(".pdf"):
         try:
             import PyPDF2
@@ -123,7 +130,9 @@ def extract_text_from_file(file_storage):
             for page in reader.pages:
                 text += page.extract_text() or ""
             return text
-        except Exception:
+        except Exception as E:
+            print(str(E))
+            print("There is an error reading the PDF file.")
             return ""
     else:
         file_storage.seek(0)
@@ -132,8 +141,8 @@ def extract_text_from_file(file_storage):
 @app.route("/", methods=["GET", "POST"])
 def home():
     keywords = []
-    resume_text = ""
-    job_text = ""
+    resume_text = soft_comparison = ""
+    job_text = salary = soft_skills = ""
     comparison = []
     if request.method == "POST":
         job_text = request.form.get("job_text", "")
@@ -141,6 +150,7 @@ def home():
         resume_file = request.files.get("resume_file")
         if resume_file and resume_file.filename:
             resume_text = extract_text_from_file(resume_file)
+            print('RESUME TEXT FROM PDF', resume_text)
         # Extract keywords using Ollama
         if job_text:
             print('JOB TEXT', job_text[:100])
