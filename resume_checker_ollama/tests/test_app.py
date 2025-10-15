@@ -1,5 +1,5 @@
 import pytest
-from app import app as flask_app
+from resume_checker_ollama.app_old import app as flask_app
 
 
 @pytest.fixture

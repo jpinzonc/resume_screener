@@ -1,69 +1,174 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Ollama Resume Keyword Scanner</h2>
-<form method="POST" enctype="multipart/form-data">
-  <div>
-    <label for="job_text">Paste Job Description:</label><br>
-    <textarea name="job_text" id="job_text" rows="8" cols="70">{{ job_text }}</textarea>
+<form method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
+  <div style="display: flex; gap: 40px;">
+    <div style="flex: 1;">
+      <label for="job_text">Paste Job Description:</label><br>
+      <textarea name="job_text" id="job_text" rows="10" cols="50" required>{{ job_text }}</textarea>
+    </div>
+    <div style="flex: 1;">
+      <label for="resume_text">Paste Resume Text:</label><br>
+      <textarea name="resume_text" id="resume_text" rows="10" cols="50">{{ resume_text }}</textarea>
+      <br>
+      <label for="resume_file">Or Upload Resume (PDF or TXT)</label>
+      <input type="file" name="resume_file" id="resume_file" accept=".pdf,.txt">
+    </div>
   </div>
-  <div>
-    <label for="resume_file">Upload Resume (PDF or TXT):</label>
-    <input type="file" name="resume_file" id="resume_file" accept=".pdf,.txt">
+  <div style="display: flex; justify-content: center; margin-top: 20px;">
+    <button type="submit">Extract & Compare</button>
   </div>
-  <div>
-    <label for="resume_text">Or Paste Resume Text:</label><br>
-    <textarea name="resume_text" id="resume_text" rows="8" cols="70">{{ resume_text }}</textarea>
-  </div>
-  <button type="submit">Extract & Compare</button>
+   <hr>
 </form>
 
 {% if salary %}
   <h3>Estimated Salary:</h3>
   <p>{{ salary }}</p>
 {% endif %}
-
+{% if comparison%}
 <div style="display: flex; gap: 40px;">
   <div>
     <h3>Technical Skills</h3>
-    <table border="1" cellpadding="5" cellspacing="0">
-      <tr>
-        <th>Keyword/Skill</th>
-        <th>In Resume?</th>
-      </tr>
-      {% for row in comparison %}
+    <div id="tech-table-container">
+      <table border="1" cellpadding="5" cellspacing="0">
         <tr>
-          <td>{{ row.keyword }}</td>
-          <td style="text-align:center;">
-            {% if row.in_resume %}
-              ✅
-            {% else %}
-              ❌
-            {% endif %}
-          </td>
+          <th>Keyword/Skill</th>
+          <th>In Resume?</th>
         </tr>
-      {% endfor %}
-    </table>
+        {% for row in comparison[:10] %}
+          <tr class="tech-row" data-page="1">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% for row in comparison[10:] %}
+          <tr class="tech-row" data-page="{{ ((loop.index0 + 10) // 10) + 1 }}" style="display:none;">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      {% if comparison|length > 10 %}
+      <div class="pagination" style="margin-top: 10px;">
+        <button onclick="showTechPage(1)" id="tech-prev">Previous</button>
+        <span id="tech-page-info">Page 1 of {{ ((comparison|length - 1) // 10) + 1 }}</span>
+        <button onclick="showTechPage(2)" id="tech-next">Next</button>
+      </div>
+      {% endif %}
+    </div>
   </div>
   <div>
     <h3>Soft Skills</h3>
-    <table border="1" cellpadding="5" cellspacing="0">
-      <tr>
-        <th>Soft Skill</th>
-        <th>In Resume?</th>
-      </tr>
-      {% for row in soft_comparison %}
+    <div id="soft-table-container">
+      <table border="1" cellpadding="5" cellspacing="0">
         <tr>
-          <td>{{ row.keyword }}</td>
-          <td style="text-align:center;">
-            {% if row.in_resume %}
-              ✅
-            {% else %}
-              ❌
-            {% endif %}
-          </td>
+          <th>Soft Skill</th>
+          <th>In Resume?</th>
         </tr>
-      {% endfor %}
-    </table>
+        {% for row in soft_comparison[:10] %}
+          <tr class="soft-row" data-page="1">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% for row in soft_comparison[10:] %}
+          <tr class="soft-row" data-page="{{ ((loop.index0 + 10) // 10) + 1 }}" style="display:none;">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      {% if soft_comparison|length > 10 %}
+      <div class="pagination" style="margin-top: 10px;">
+        <button onclick="showSoftPage(1)" id="soft-prev">Previous</button>
+        <span id="soft-page-info">Page 1 of {{ ((soft_comparison|length - 1) // 10) + 1 }}</span>
+        <button onclick="showSoftPage(2)" id="soft-next">Next</button>
+      </div>
+      {% endif %}
+    </div>
   </div>
 </div>
+{%endif%}
+<script>
+let techCurrentPage = 1;
+let softCurrentPage = 1;
+const techTotalPages = {{ ((comparison|length - 1) // 10) + 1 if comparison else 1 }};
+const softTotalPages = {{ ((soft_comparison|length - 1) // 10) + 1 if soft_comparison else 1 }};
+
+function showTechPage(page) {
+  if (page < 1 || page > techTotalPages) return;
+  
+  document.querySelectorAll('.tech-row').forEach(row => {
+    row.style.display = row.dataset.page == page ? '' : 'none';
+  });
+  
+  techCurrentPage = page;
+  document.getElementById('tech-page-info').textContent = `Page ${page} of ${techTotalPages}`;
+  document.getElementById('tech-prev').onclick = () => showTechPage(page - 1);
+  document.getElementById('tech-next').onclick = () => showTechPage(page + 1);
+  document.getElementById('tech-prev').disabled = page === 1;
+  document.getElementById('tech-next').disabled = page === techTotalPages;
+}
+
+function showSoftPage(page) {
+  if (page < 1 || page > softTotalPages) return;
+  
+  document.querySelectorAll('.soft-row').forEach(row => {
+    row.style.display = row.dataset.page == page ? '' : 'none';
+  });
+  
+  softCurrentPage = page;
+  document.getElementById('soft-page-info').textContent = `Page ${page} of ${softTotalPages}`;
+  document.getElementById('soft-prev').onclick = () => showSoftPage(page - 1);
+  document.getElementById('soft-next').onclick = () => showSoftPage(page + 1);
+  document.getElementById('soft-prev').disabled = page === 1;
+  document.getElementById('soft-next').disabled = page === softTotalPages;
+}
+
+// Initialize pagination on page load
+if (techTotalPages > 1) {
+  document.getElementById('tech-prev').disabled = true;
+  document.getElementById('tech-next').disabled = techTotalPages === 1;
+}
+if (softTotalPages > 1) {
+  document.getElementById('soft-prev').disabled = true;
+  document.getElementById('soft-next').disabled = softTotalPages === 1;
+}
+function validateForm() {
+    const resumeText = document.getElementById('resume_text').value.trim();
+    const resumeFile = document.getElementById('resume_file').files;
+
+    if (resumeText === "" && resumeFile.length === 0) {
+        alert("Please enter text in the text area or upload a resume file.");
+        return false; // Prevent form submission
+    }
+    // If validation passes, the form will submit normally.
+    return true;
+}
+</script>
+
 {% endblock %}
