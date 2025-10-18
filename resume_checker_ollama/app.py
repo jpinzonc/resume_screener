@@ -19,13 +19,10 @@ def home():
         if job_text and resume_text:
             print('JOB TEXT', job_text[:100])
             GenAIInteractor_Instance = GenAIInteractor(job_text, resume_text)
-            GenAIInteractor_Instance.extract_keywords_ollama()
-            GenAIInteractor_Instance.extract_salary_ollama()
-            GenAIInteractor_Instance.extract_soft_skills_ollama()
-            comparison = GenAIInteractor_Instance.compare_keywords_ollama(GenAIInteractor_Instance.keywords_list, GenAIInteractor_Instance.resume_text)
-            soft_comparison = GenAIInteractor_Instance.compare_keywords_ollama(GenAIInteractor_Instance.skills, GenAIInteractor_Instance.resume_text)
-            salary=GenAIInteractor_Instance.salary
-    
+            comparison,soft_comparison, salary = GenAIInteractor_Instance.run_process()
+            # comparison = GenAIInteractor_Instance.comparison
+            # soft_comparison = GenAIInteractor_Instance.soft_comparison
+            # salary=GenAIInteractor_Instance.salary
     return render_template(
         "home.html",
         job_text=job_text,

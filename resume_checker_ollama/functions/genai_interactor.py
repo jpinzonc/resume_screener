@@ -1,14 +1,29 @@
 import requests
-import json
+import json 
 
 class GenAIInteractor:
-    def __init__(self, job_text, resume_text, model="llama3.2:latest",  url="http://localhost:11434/api/generate"):
+    def __init__(self, job_text, resume_text, model="llama3.2:latest",  url="http://localhost:11434/api/generate", temperature = 0.2, top_p=0.2):
         self.job_text = job_text
         self.resume_text = resume_text
         self.model = model
         self.url = url
+        self.model_temperature = temperature
+        self.model_top_p = top_p
         self.timeout = 120
 
+    def run_genai(self, prompt):
+        response = requests.post(
+            self.url,
+            json = {"model": self.model, 
+                    "prompt": prompt, 
+                    "stream": False, 
+                    "temperature": self.model_temperature, 
+                    "top_p":self.model_top_p
+                    },
+            timeout=self.timeout
+        )
+        return response.ok, response.json().get("response", "")
+    
     def compare_keywords_ollama(self, keywords, text):
         if not keywords:
             return []
@@ -21,13 +36,8 @@ class GenAIInteractor:
             f"Resume:\n{text}\n\n"
             "Output:"
         )
-        response = requests.post(
-            self.url,
-            json={"model": self.model, "prompt": prompt, "stream": False},
-            timeout=self.timeout
-        )
-        if response.ok:
-            result = response.json().get("response", "")
+        response_status, result = self.run_genai(prompt)
+        if response_status:
             try:
                 # Find the first JSON array in the response
                 start = result.find('[')
@@ -37,7 +47,6 @@ class GenAIInteractor:
             except Exception as E:
                 print("Error parsing JSON from Ollama response", str(E))
                 pass
-        # fallback: all False
         else: 
             return [{"keyword": kw, "in_resume": kw in self.resume_text.lower()} for kw in self.keywords]
     
@@ -48,14 +57,9 @@ class GenAIInteractor:
             "If no salary is mentioned, reply with 'Salary Not specified'.\n\n"
             f"Job Description:\n{self.job_text}\n\nSalary:"
         )
-        response = requests.post(
-            self.url,
-            json={"model": self.model, "prompt": prompt, "stream": False},
-            timeout=60
-        )
-        if response.ok:
-            result = response.json()
-            self.salary =  result.get("response", "").strip()
+        response_status, result = self.run_genai(prompt)
+        if response_status:
+            self.salary =  result.strip()
         else:
             self.salary =  "Not specified"
     
@@ -65,14 +69,9 @@ class GenAIInteractor:
             " Return only a comma-separated list of skills without any additional text.\n\n"
             f"Job Description:\n{self.job_text}\n\nSoft Skills:"
         )
-        response = requests.post(
-            self.url,
-            json={"model": self.model, "prompt": prompt, "stream": False},
-            timeout=60
-        )
-        if response.ok:
-            result = response.json()
-            skills_text = result.get("response", "").strip()
+        response_status, result = self.run_genai(prompt)
+        if response_status:
+            skills_text = result.strip()
             # Split by commas and clean up whitespace
             self.skills = [skill.strip() for skill in skills_text.split(",") if skill.strip()]
         else:
@@ -85,20 +84,22 @@ class GenAIInteractor:
             "Only list the keywords, no explanations. Do not include soft skills, salary, or benefits.\n\n"
             f"Job Description:\n{self.job_text}\n\nTechnical Skills and Tools:"
         )
-        response = requests.post(
-            self.url,
-            json={"model": self.model, "prompt": prompt, "stream": False},
-            timeout=60
-        )
-        if response.ok:
-            result = response.json()
-            keywords = result.get("response", "")
+        response_status, result = self.run_genai(prompt)
+        if response_status:
+            keywords = result
             # Split by commas and clean up whitespace
             self.keywords_list = [kw.strip() for kw in keywords.split(",") if kw.strip()]
         else:
             self.keywords_list = []
-
     
+    def run_process(self):
+        self.extract_keywords_ollama()
+        self.extract_salary_ollama()
+        self.extract_soft_skills_ollama()
+        self.comparison = self.compare_keywords_ollama(self.keywords_list, self.resume_text)
+        self.soft_comparison = self.compare_keywords_ollama(self.skills, self.resume_text)
+        return self.comparison, self.soft_comparison, self.salary
+
     @staticmethod
     def extract_text_from_file(file_storage):
         filename = file_storage.filename.lower()

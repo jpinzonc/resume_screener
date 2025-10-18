@@ -1,6 +1,6 @@
 import pytest
-from resume_checker_ollama.app_old import app as flask_app
-
+# Importing as flask_app to avoid naming conflicts with other 'app' instances in tests
+from resume_checker_ollama.app import app as flask_app
 
 @pytest.fixture
 def client():
