@@ -20,3 +20,5 @@ instance/
 secret
 *secret*
 /secret
+
+*.vscode*
