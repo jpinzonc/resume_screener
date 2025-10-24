@@ -2,6 +2,17 @@
 {% block content %}
 <h2>Ollama Resume Keyword Scanner</h2>
 <form method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
+  <div style="margin-bottom: 20px;">
+    <label>Select AI Provider:</label><br>
+    <input type="radio" id="ollama" name="ai_provider" value="ollama" onchange="toggleProvider()">
+    <label for="ollama">Ollama</label>
+    <input type="radio" id="google" name="ai_provider" value="google" onchange="toggleProvider()" style="margin-left: 20px;">
+    <label for="google">Google</label>
+    <div id="api-key-container" style="margin-top: 10px; display: none;">
+      <label for="api_key">Google API Key:</label>
+      <input type="text" name="api_key" id="api_key" placeholder="Enter your Google API key">
+    </div>
+  </div>
   <div style="display: flex; gap: 40px;">
     <div style="flex: 1;">
       <label for="job_text">Paste Job Description:</label><br>
@@ -16,7 +27,7 @@
     </div>
   </div>
   <div style="display: flex; justify-content: center; margin-top: 20px;">
-    <button type="submit">Extract & Compare</button>
+    <button type="submit" id="submit-btn" disabled>Extract & Compare</button>
   </div>
    <hr>
 </form>
@@ -111,6 +122,44 @@
       {% endif %}
     </div>
   </div>
+  <div>
+  {%if new_resume%}
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>Reformatted Resume:</h3>
+      <button onclick="copyResume()" style="padding: 5px 10px;">Copy</button>
+    </div>
+    <div id="resume-content" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 15px; background-color: #f9f9f9;">
+    {%for main_key, main_value in new_resume.items() %}
+      <h4>{{ main_key }}</h4>
+      {% if new_resume_format[main_key] == 'String'%}
+        <p>{{ main_value }}</p>
+      {% elif new_resume_format[main_key] == 'List_dictionary'%}
+        {%for internal_value in main_value%}
+          {% for k,v in internal_value.items()%}
+            {% if k != 'Highlights'%}
+              <p>{{v}}</p>
+            {%else%}
+              
+              {%for highlight in v%}
+                <li>{{highlight}}</li>
+              {%endfor%}
+              </ul>
+            {%endif%}
+          {%endfor%}
+        {%endfor%}
+      {% elif new_resume_format[main_key] == 'Dictionary'%}
+       {%for k,v in main_value.items()%}
+          <h5>{{k}}</h5>
+          {% for s in v%}
+            <p>{{s.Skill}} - {{s['Proficiency Level']}}</p>
+          {%endfor%}
+       {%endfor%}
+       {%else%}
+      {%endif%}
+    {% endfor %}
+    </div>
+  {%endif%}
+  </div>
 </div>
 {%endif%}
 <script>
@@ -158,16 +207,42 @@ if (softTotalPages > 1) {
   document.getElementById('soft-prev').disabled = true;
   document.getElementById('soft-next').disabled = softTotalPages === 1;
 }
+
+// Initialize form state
+document.getElementById('submit-btn').disabled = true;
+function toggleProvider() {
+  const googleRadio = document.getElementById('google');
+  const apiKeyContainer = document.getElementById('api-key-container');
+  const submitBtn = document.getElementById('submit-btn');
+  const providerSelected = document.querySelector('input[name="ai_provider"]:checked');
+  
+  apiKeyContainer.style.display = googleRadio.checked ? 'block' : 'none';
+  submitBtn.disabled = !providerSelected;
+}
+
 function validateForm() {
     const resumeText = document.getElementById('resume_text').value.trim();
     const resumeFile = document.getElementById('resume_file').files;
+    const googleRadio = document.getElementById('google');
+    const apiKey = document.getElementById('api_key').value.trim();
 
     if (resumeText === "" && resumeFile.length === 0) {
         alert("Please enter text in the text area or upload a resume file.");
-        return false; // Prevent form submission
+        return false;
     }
-    // If validation passes, the form will submit normally.
+    
+    if (googleRadio.checked && apiKey === "") {
+        alert("Please enter your Google API key.");
+        return false;
+    }
+    
     return true;
+}
+function copyResume() {
+    const content = document.getElementById('resume-content').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Resume copied to clipboard!');
+    });
 }
 </script>
 
