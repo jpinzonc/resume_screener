@@ -23,8 +23,8 @@ def home():
         job_text = request.form.get("job_text", None)
         resume_text = request.form.get("resume_text", None)
         resume_file = request.files.get("resume_file", None)
-        google = True
-        ollama = False
+        google = False
+        ollama = True
         if resume_file: 
             resume_text = extract_text_from_file(resume_file)
             print('RESUME TEXT FROM PDF', resume_text)
