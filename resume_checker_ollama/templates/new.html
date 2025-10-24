@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Ollama Resume Keyword Scanner</h2>
+<form method="POST" enctype="multipart/form-data" onsubmit="return validateForm()">
+  <div style="margin-bottom: 20px;">
+    <label>Select AI Provider:</label><br>
+    <input type="radio" id="ollama" name="ai_provider" value="ollama" onchange="toggleProvider()">
+    <label for="ollama">Ollama</label>
+    <input type="radio" id="google" name="ai_provider" value="google" onchange="toggleProvider()" style="margin-left: 20px;">
+    <label for="google">Google</label>
+    <div id="api-key-container" style="margin-top: 10px; display: none;">
+      <label for="api_key">Google API Key:</label>
+      <input type="text" name="api_key" id="api_key" placeholder="Enter your Google API key">
+    </div>
+  </div>
+  <div style="display: flex; gap: 40px;">
+    <div style="flex: 1;">
+      <label for="job_text">Paste Job Description:</label><br>
+      <textarea name="job_text" id="job_text" rows="10" cols="50" required>{{ job_text }}</textarea>
+    </div>
+    <div style="flex: 1;">
+      <label for="resume_text">Paste Resume Text:</label><br>
+      <textarea name="resume_text" id="resume_text" rows="10" cols="50">{{ resume_text }}</textarea>
+      <br>
+      <label for="resume_file">Or Upload Resume (PDF or TXT)</label>
+      <input type="file" name="resume_file" id="resume_file" accept=".pdf,.txt">
+    </div>
+  </div>
+  <div style="display: flex; justify-content: center; margin-top: 20px;">
+    <button type="submit" id="submit-btn" disabled>Extract & Compare</button>
+  </div>
+   <hr>
+</form>
+
+{% if salary %}
+  <h3>Estimated Salary:</h3>
+  <p>{{ salary }}</p>
+{% endif %}
+{% if comparison%}
+<div style="display: flex; gap: 40px;">
+  <div>
+    <h3>Technical Skills</h3>
+    <div id="tech-table-container">
+      <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+          <th>Keyword/Skill</th>
+          <th>In Resume?</th>
+        </tr>
+        {% for row in comparison[:10] %}
+          <tr class="tech-row" data-page="1">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% for row in comparison[10:] %}
+          <tr class="tech-row" data-page="{{ ((loop.index0 + 10) // 10) + 1 }}" style="display:none;">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      {% if comparison|length > 10 %}
+      <div class="pagination" style="margin-top: 10px;">
+        <button onclick="showTechPage(1)" id="tech-prev">Previous</button>
+        <span id="tech-page-info">Page 1 of {{ ((comparison|length - 1) // 10) + 1 }}</span>
+        <button onclick="showTechPage(2)" id="tech-next">Next</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div>
+    <h3>Soft Skills</h3>
+    <div id="soft-table-container">
+      <table border="1" cellpadding="5" cellspacing="0">
+        <tr>
+          <th>Soft Skill</th>
+          <th>In Resume?</th>
+        </tr>
+        {% for row in soft_comparison[:10] %}
+          <tr class="soft-row" data-page="1">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        {% for row in soft_comparison[10:] %}
+          <tr class="soft-row" data-page="{{ ((loop.index0 + 10) // 10) + 1 }}" style="display:none;">
+            <td>{{ row.keyword }}</td>
+            <td style="text-align:center;">
+              {% if row.in_resume %}
+                ✅
+              {% else %}
+                ❌
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      {% if soft_comparison|length > 10 %}
+      <div class="pagination" style="margin-top: 10px;">
+        <button onclick="showSoftPage(1)" id="soft-prev">Previous</button>
+        <span id="soft-page-info">Page 1 of {{ ((soft_comparison|length - 1) // 10) + 1 }}</span>
+        <button onclick="showSoftPage(2)" id="soft-next">Next</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div>
+  {%if new_resume%}
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>Reformatted Resume:</h3>
+      <button onclick="copyResume()" style="padding: 5px 10px;">Copy</button>
+    </div>
+    <div id="resume-content" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 15px; background-color: #f9f9f9;">
+      {%for main_key, main_value in new_resume.items() %}
+        <h4>{{ main_key }}</h4>
+        {% if main_value is string %}
+          <p>{{ main_value }}</p>
+        {% elif main_value is iterable and main_value is not string %}
+          {%for item in main_value%}
+            {% if item is mapping %}
+              {% for k,v in item.items()%}
+                {% if k != 'Highlights'%}
+                  <p><strong>{{k}}:</strong> {{v}}</p>
+                {%else%}
+                  <p><strong>{{k}}:</strong></p>
+                  <ul>
+                  {%for highlight in v%}
+                    <li>{{highlight}}</li>
+                  {%endfor%}
+                  </ul>
+                {%endif%}
+              {%endfor%}
+            {% else %}
+              <p>{{item}}</p>
+            {% endif %}
+          {%endfor%}
+        {% endif %}
+      {% endfor %}
+    </div>
+  {%endif%}
+  </div>
+</div>
+{%endif%}
+<script>
+let techCurrentPage = 1;
+let softCurrentPage = 1;
+const techTotalPages = {{ ((comparison|length - 1) // 10) + 1 if comparison else 1 }};
+const softTotalPages = {{ ((soft_comparison|length - 1) // 10) + 1 if soft_comparison else 1 }};
+
+function showTechPage(page) {
+  if (page < 1 || page > techTotalPages) return;
+  
+  document.querySelectorAll('.tech-row').forEach(row => {
+    row.style.display = row.dataset.page == page ? '' : 'none';
+  });
+  
+  techCurrentPage = page;
+  document.getElementById('tech-page-info').textContent = `Page ${page} of ${techTotalPages}`;
+  document.getElementById('tech-prev').onclick = () => showTechPage(page - 1);
+  document.getElementById('tech-next').onclick = () => showTechPage(page + 1);
+  document.getElementById('tech-prev').disabled = page === 1;
+  document.getElementById('tech-next').disabled = page === techTotalPages;
+}
+
+function showSoftPage(page) {
+  if (page < 1 || page > softTotalPages) return;
+  
+  document.querySelectorAll('.soft-row').forEach(row => {
+    row.style.display = row.dataset.page == page ? '' : 'none';
+  });
+  
+  softCurrentPage = page;
+  document.getElementById('soft-page-info').textContent = `Page ${page} of ${softTotalPages}`;
+  document.getElementById('soft-prev').onclick = () => showSoftPage(page - 1);
+  document.getElementById('soft-next').onclick = () => showSoftPage(page + 1);
+  document.getElementById('soft-prev').disabled = page === 1;
+  document.getElementById('soft-next').disabled = page === softTotalPages;
+}
+
+// Initialize pagination on page load
+if (techTotalPages > 1) {
+  document.getElementById('tech-prev').disabled = true;
+  document.getElementById('tech-next').disabled = techTotalPages === 1;
+}
+if (softTotalPages > 1) {
+  document.getElementById('soft-prev').disabled = true;
+  document.getElementById('soft-next').disabled = softTotalPages === 1;
+}
+
+// Initialize form state
+document.getElementById('submit-btn').disabled = true;
+function toggleProvider() {
+  const googleRadio = document.getElementById('google');
+  const apiKeyContainer = document.getElementById('api-key-container');
+  const submitBtn = document.getElementById('submit-btn');
+  const providerSelected = document.querySelector('input[name="ai_provider"]:checked');
+  
+  apiKeyContainer.style.display = googleRadio.checked ? 'block' : 'none';
+  submitBtn.disabled = !providerSelected;
+}
+
+function validateForm() {
+    const resumeText = document.getElementById('resume_text').value.trim();
+    const resumeFile = document.getElementById('resume_file').files;
+    const googleRadio = document.getElementById('google');
+    const apiKey = document.getElementById('api_key').value.trim();
+
+    if (resumeText === "" && resumeFile.length === 0) {
+        alert("Please enter text in the text area or upload a resume file.");
+        return false;
+    }
+    
+    if (googleRadio.checked && apiKey === "") {
+        alert("Please enter your Google API key.");
+        return false;
+    }
+    
+    return true;
+}
+
+function copyResume() {
+    const content = document.getElementById('resume-content').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Resume copied to clipboard!');
+    });
+}
+</script>
+
+{% endblock %}
