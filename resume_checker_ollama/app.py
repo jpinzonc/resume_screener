@@ -25,21 +25,25 @@ def home():
         resume_file = request.files.get("resume_file", None)
         google = False
         ollama = True
+        aitool = request.form.get("ai_provider")
+        print(aitool)
         if resume_file: 
             resume_text = extract_text_from_file(resume_file)
             print('RESUME TEXT FROM PDF', resume_text)
         if job_text and resume_text:
             print('JOB TEXT', job_text[:100])
-            if ollama: 
+            if aitool=='ollama': 
                 print('USING OLLAMA')
                 GenAIInteractor_Instance = GenAIInteractor(job_text, resume_text)
-            if google: # Google GEMINI
+            elif aitool=='google': # Google GEMINI
                 print('USING GOOGLE GEMINI')
                 import sys, os
                 sys.path.append(os.path.abspath(os.path.join('../', 'secret')))
                 from secret_info import google_genai_api
                 GOOGLE_API_KEY = google_genai_api            
                 GenAIInteractor_Instance = GenAIInteractorGoogle(GOOGLE_API_KEY, job_text, resume_text)
+            else: 
+                print('NO AI TOOL SELECTED, DEFAULTING TO OLLAMA')
 
             comparison,soft_comparison, salary, new_resume= GenAIInteractor_Instance.run_process()
             # comparison = GenAIInteractor_Instance.comparison

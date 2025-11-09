@@ -236,13 +236,40 @@ function validateForm() {
     }
     
     return true;
-}
+};
+
 function copyResume() {
-    const content = document.getElementById('resume-content').innerText;
+  // Get the plain text content, not innerHTML which includes HTML tags
+  const content = document.getElementById('resume-content').textContent; 
+  console.log('COPYING RESUME:', content);
+
+  // Check if the Clipboard API is available
+  if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(content).then(() => {
-        alert('Resume copied to clipboard!');
+      alert('Resume copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy resume: ', err);
+      alert('Failed to copy resume. Please try again or use manual copy.');
     });
+  } else {
+    // Fallback for non-secure contexts or older browsers
+    // A common fallback is using document.execCommand('copy')
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    textarea.style.position = 'fixed'; // Make it out of sight
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      alert('Resume copied to clipboard!');
+    } catch (err) {
+      console.error('Fallback copy failed: ', err);
+      alert('Fallback copying failed. Please select and copy the text manually.');
+    }
+    document.body.removeChild(textarea);
+  }
 }
+
 </script>
 
 {% endblock %}

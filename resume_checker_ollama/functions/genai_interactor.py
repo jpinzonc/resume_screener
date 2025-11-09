@@ -2,7 +2,9 @@ import requests
 import json 
 
 class GenAIInteractor:
-    def __init__(self, job_text, resume_text, model="llama3.2:latest",  url="http://localhost:11434/api/generate", temperature = 0.2, top_k=20, top_p=0.25):
+    def __init__(self, job_text, resume_text, model="qwen3:latest",
+    # "llama3.2:latest", 
+     url="http://localhost:11434/api/generate", temperature = 0.2, top_k=20, top_p=0.25):
         self.job_text = job_text
         self.resume_text = resume_text
         self.model = model
@@ -10,7 +12,7 @@ class GenAIInteractor:
         self.model_temperature = temperature
         self.model_top_k = top_k
         self.model_top_p = top_p
-        self.timeout = 120
+        self.timeout = 600
 
     def run_genai(self, prompt):
         response = requests.post(
@@ -138,12 +140,19 @@ class GenAIInteractor:
             self.keywords_list = []
     
     def run_process(self):
+        print("Extracting keywords...")
         self.extract_keywords_ollama()
+        print("Extracting salary...")
         self.extract_salary_ollama()
+        print("Extracting soft skills...")
         self.extract_soft_skills_ollama()
+        print("Comparing keywords...")
         self.comparison = self.compare_keywords_ollama(self.keywords_list, self.resume_text)
+        print("Comparing soft skills...")
         self.soft_comparison = self.compare_keywords_ollama(self.skills, self.resume_text)
+        print("Converting resume...")
         self.convert_resume()
+        print('DONE PROCESSING')
         return self.comparison, self.soft_comparison, self.salary, self.new_resume
 
 def extract_text_from_file(file_storage):
@@ -324,12 +333,19 @@ class GenAIInteractorGoogle:
             self.new_resume = "Not specified"
 
     def run_process(self):
+        print("Extracting technical skills...")
         self.extract_tech_skills()
+        print("Extracting soft skills...")
         self.extract_soft_skills()
+        print("Extracting salary...")
         self.extract_salary()
+        print("Comparing technical skills...")
         self.comparison = self.compare_skills('tech')
+        print("Comparing soft skills...")
         self.soft_comparison = self.compare_skills('soft')
+        print("Converting resume...")
         self.convert_resume()
+        print('DONE PROCESSING')
         return self.comparison, self.soft_comparison, self.salary, self.new_resume
     
     
