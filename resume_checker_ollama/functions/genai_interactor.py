@@ -2,9 +2,9 @@ import requests
 import json 
 
 class GenAIInteractor:
-    def __init__(self, job_text, resume_text, model="qwen3:latest",
+    def __init__(self, job_text:str, resume_text:str, model:str="qwen3:latest",
     # "llama3.2:latest", 
-     url="http://localhost:11434/api/generate", temperature = 0.2, top_k=20, top_p=0.25):
+     url:str ="http://localhost:11434/api/generate", temperature: float = 0.2, top_k: float =20, top_p: float =0.25) --> None:
         self.job_text = job_text
         self.resume_text = resume_text
         self.model = model
@@ -14,7 +14,7 @@ class GenAIInteractor:
         self.model_top_p = top_p
         self.timeout = 600
 
-    def run_genai(self, prompt):
+    def run_genai(self, prompt:str) --> tuple[bool, str]:
         response = requests.post(
             self.url,
             json = {"model": self.model, 
